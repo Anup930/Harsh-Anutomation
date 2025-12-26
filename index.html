@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Automation App</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f4f4f9; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h2 { color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+        
+        .upload-box { border: 2px dashed #ccc; padding: 30px; text-align: center; margin-bottom: 20px; border-radius: 5px; }
+        .btn { background: #007bff; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 4px; font-size: 16px; margin: 5px; }
+        .btn:hover { background: #0056b3; }
+        .btn-success { background: #28a745; }
+        .btn-success:hover { background: #218838; }
+        
+        #status { margin-top: 15px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>📂 Expense Automation Tool</h2>
+    
+    <div class="upload-box">
+        <p>Select Excel File to Process</p>
+        <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" />
+    </div>
+
+    <div id="actions">
+        <button class="btn" onclick="uploadAndProcess()">1. Upload & Import Data</button>
+        <button class="btn btn-success" onclick="generateReport()">2. Generate Expense Report</button>
+    </div>
+
+    <div id="status"></div>
+</div>
+
+<script>
+    // YAHA APNA DEPLOYED APP SCRIPT URL DALNA
+    const SCRIPT_URL = "YOUR_GOOGLE_SCRIPT_WEB_APP_URL_HERE";
+
+    async function uploadAndProcess() {
+        const fileInput = document.getElementById('fileInput');
+        const statusDiv = document.getElementById('status');
+        
+        if (!fileInput.files.length) {
+            alert("Please select a file first!");
+            return;
+        }
+
+        statusDiv.innerText = "Reading file...";
+        statusDiv.style.color = "blue";
+
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+
+        reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            
+            // Assume data is in the first sheet
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            
+            // Convert to JSON
+            const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+            
+            // Send to Google Sheet
+            sendToGoogleSheet(jsonData);
+        };
+        
+        reader.readAsArrayBuffer(file);
+    }
+
+    function sendToGoogleSheet(data) {
+        const statusDiv = document.getElementById('status');
+        statusDiv.innerText = "Sending data to Google Sheets...";
+
+        // App Script accepts POST request
+        fetch(SCRIPT_URL, {
+            method: "POST",
+            mode: "no-cors", // Zaruri hai kyunki GitHub aur Google alag domain hain
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "importData", data: data })
+        })
+        .then(() => {
+            statusDiv.innerText = "✅ Data Imported Successfully!";
+            statusDiv.style.color = "green";
+        })
+        .catch(error => {
+            console.error("Error:", error);
+            statusDiv.innerText = "❌ Error uploading data.";
+            statusDiv.style.color = "red";
+        });
+    }
+
+    function generateReport() {
+        // Future logic to trigger expense generation
+        alert("Feature coming soon: Trigger App Script to make Expense Report");
+    }
+</script>
+
+</body>
+</html>
