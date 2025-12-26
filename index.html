@@ -1,127 +1,245 @@
-<!-- V 1.2.5 -->
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Expense Automation App</title>
+    <title>Expense Manager Dashboard</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f4f4f9; }
-        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        h2 { color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; color: #333; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         
-        .upload-box { border: 2px dashed #ccc; padding: 30px; text-align: center; margin-bottom: 20px; border-radius: 5px; }
-        .btn { background: #007bff; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 4px; font-size: 16px; margin: 5px; }
-        .btn:hover { background: #0056b3; }
-        .btn-success { background: #28a745; }
-        .btn-success:hover { background: #218838; }
+        h2 { border-bottom: 3px solid #2f75b5; padding-bottom: 10px; color: #2f75b5; }
         
-        #status { margin-top: 15px; font-weight: bold; }
+        /* Upload Section */
+        .upload-area { border: 2px dashed #ccc; padding: 20px; text-align: center; border-radius: 8px; margin-bottom: 20px; background: #fafafa; }
+        input[type="file"] { padding: 10px; }
+
+        /* Control Table Styling */
+        .control-panel { display: none; margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background: #2f75b5; color: white; }
+        
+        /* Status Colors */
+        .status-data { background-color: #c6efce; color: #006100; font-weight: bold; text-align: center; border-radius: 4px; padding: 2px; }
+        .status-blank { background-color: #ffc7ce; color: #9c0006; font-weight: bold; text-align: center; border-radius: 4px; padding: 2px; }
+
+        /* Inputs */
+        input.input-box { width: 90%; padding: 5px; border: 1px solid #ccc; border-radius: 4px; }
+        
+        /* Buttons */
+        .btn-group { margin-top: 20px; text-align: right; }
+        .btn { padding: 12px 24px; border: none; cursor: pointer; border-radius: 5px; font-size: 16px; margin-left: 10px; font-weight: bold; }
+        .btn-primary { background: #28a745; color: white; } /* Green */
+        .btn-primary:hover { background: #218838; }
+        
+        .loading { color: blue; font-weight: bold; margin-top: 10px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>📂 Expense Automation Tool</h2>
+    <h2>📊 Expense Automation Hub</h2>
     
-    <div class="upload-box">
-        <p>Select Excel File to Process</p>
-        <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" />
+    <div class="upload-area">
+        <p>📂 Select your Excel File to start:</p>
+        <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" onchange="loadAndPreview()" />
     </div>
 
-    <div id="actions">
-        <button class="btn" onclick="uploadAndProcess()">1. Upload & Import Data</button>
-        <button class="btn btn-success" onclick="generateReport()">2. Generate Expense Report</button>
-    </div>
+    <div id="controlPanel" class="control-panel">
+        <h3>🎛️ Control Center</h3>
+        <p>Map your columns below without opening Excel.</p>
+        
+        <table id="mappingTable">
+            <thead>
+                <tr>
+                    <th width="20%">Column Name</th>
+                    <th width="10%">Status</th>
+                    <th width="10%">Is Method?</th>
+                    <th width="20%">Split By (e.g. ":")</th>
+                    <th width="20%">Fill/Rename</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                </tbody>
+        </table>
 
-    <div id="status"></div>
+        <div class="btn-group">
+            <button class="btn btn-primary" onclick="processAndDownload()">⬇️ Generate & Download Report</button>
+        </div>
+        <div id="msg" class="loading"></div>
+    </div>
 </div>
 
 <script>
-    // YAHA APNA DEPLOYED APP SCRIPT URL DALNA
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwp4UULW42vByVty5YnhfgsZLRDQ-aRR4qsbnXct5zc0mGhWgkOi5H1rmV2_AeUAlXU/exec";
+    // GLOBAL VARIABLES to store data
+    let rawData = [];
+    let headers = [];
+    let workbookName = "";
 
-    async function uploadAndProcess() {
+    // 1. FILE LOAD & PREVIEW
+    function loadAndPreview() {
         const fileInput = document.getElementById('fileInput');
-        const statusDiv = document.getElementById('status');
-        
-        if (!fileInput.files.length) {
-            alert("Please select a file first!");
-            return;
-        }
-
-        statusDiv.innerText = "Reading file...";
-        statusDiv.style.color = "blue";
-
         const file = fileInput.files[0];
+        if (!file) return;
+
+        workbookName = file.name.split('.')[0]; // Store filename
         const reader = new FileReader();
 
         reader.onload = function(e) {
             const data = new Uint8Array(e.target.result);
             const workbook = XLSX.read(data, {type: 'array'});
             
-            // Assume data is in the first sheet
+            // Read First Sheet
             const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            rawData = XLSX.utils.sheet_to_json(firstSheet, {defval: ""}); // Empty cells as ""
             
-            // Convert to JSON
-            const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+            if (rawData.length === 0) { alert("File is empty!"); return; }
+
+            // Extract Headers
+            headers = Object.keys(rawData[0]);
             
-            // Send to Google Sheet
-            sendToGoogleSheet(jsonData);
+            // Show Dashboard
+            renderControlTable();
+            document.getElementById('controlPanel').style.display = 'block';
         };
-        
         reader.readAsArrayBuffer(file);
     }
 
-    function sendToGoogleSheet(data) {
-        const statusDiv = document.getElementById('status');
-        statusDiv.innerText = "Sending data to Google Sheets...";
+    // 2. RENDER CONTROL TABLE (HTML Generation)
+    function renderControlTable() {
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = ""; // Clear old
 
-        // App Script accepts POST request
-        fetch(SCRIPT_URL, {
-            method: "POST",
-            mode: "no-cors", // Zaruri hai kyunki GitHub aur Google alag domain hain
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: "importData", data: data })
-        })
-        .then(() => {
-            statusDiv.innerText = "✅ Data Imported Successfully!";
-            statusDiv.style.color = "green";
-        })
-        .catch(error => {
-            console.error("Error:", error);
-            statusDiv.innerText = "❌ Error uploading data.";
-            statusDiv.style.color = "red";
+        headers.forEach((header, index) => {
+            // Check if column has data
+            let hasData = rawData.some(row => row[header] && row[header].toString().trim() !== "");
+            let statusClass = hasData ? "status-data" : "status-blank";
+            let statusText = hasData ? "Has Data" : "Blank";
+
+            // Create Row
+            let tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${header}</strong></td>
+                <td><div class="${statusClass}">${statusText}</div></td>
+                <td style="text-align:center;">
+                    <input type="radio" name="methodGroup" value="${header}" ${header.toLowerCase().includes('vch') ? 'checked' : ''}>
+                </td>
+                <td>
+                    <input type="text" class="input-box split-input" id="split-${index}" placeholder="Delimiter (e.g. :)">
+                </td>
+                <td>
+                    <input type="text" class="input-box fill-input" id="fill-${index}" placeholder="New Name / Fill Value">
+                </td>
+            `;
+            tbody.appendChild(tr);
         });
     }
 
-    function generateReport() {
-        const statusDiv = document.getElementById('status');
-        statusDiv.innerText = "Generating Expense Report...";
-        statusDiv.style.color = "blue";
+    // 3. MAIN LOGIC: PROCESS DATA & DOWNLOAD
+    function processAndDownload() {
+        const msgDiv = document.getElementById('msg');
+        msgDiv.innerText = "Processing data...";
 
-        // Call App Script with action: "generateExpense"
-        fetch(SCRIPT_URL, {
-            method: "POST",
-            mode: "no-cors", // Note: no-cors means we won't see the specific success text, but code will run
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: "generateExpense" })
-        })
-        .then(() => {
-            // Since no-cors hides the response, we assume success if request didn't fail network-wise
-            statusDiv.innerText = "✅ Expense Report Request Sent! Check your Google Sheet.";
-            statusDiv.style.color = "green";
-        })
-        .catch(error => {
-            console.error("Error:", error);
-            statusDiv.innerText = "❌ Error generating report.";
-            statusDiv.style.color = "red";
+        // A. Get User Rules from UI
+        let selectedMethodCol = document.querySelector('input[name="methodGroup"]:checked')?.value || "";
+        let splitRules = {}; // Store split delimiters
+        let fillRules = {};  // Store rename/fill values
+
+        headers.forEach((header, index) => {
+            let sVal = document.getElementById(`split-${index}`).value;
+            let fVal = document.getElementById(`fill-${index}`).value;
+            if(sVal) splitRules[header] = sVal;
+            if(fVal) fillRules[header] = fVal;
         });
+
+        // B. Identify Core Columns
+        // Note: Using flexible matching (case-insensitive)
+        let colDate = headers.find(h => h.toLowerCase().includes("date"));
+        let colDebit = headers.find(h => h.toLowerCase().includes("debit"));
+        let colCredit = headers.find(h => h.toLowerCase().includes("credit"));
+        let colLedger = headers.find(h => h.toLowerCase().includes("ledger") || h.toLowerCase().includes("particulars"));
+
+        if (!colDate || !colDebit || !colCredit || !colLedger) {
+            alert("Error: Date, Debit, Credit, or Ledger columns not found automatically. Please rename columns in your Excel.");
+            return;
+        }
+
+        // C. Process Each Row
+        let expensesData = rawData.map(row => {
+            // 1. Date
+            let dateVal = row[colDate];
+
+            // 2. Method (From Radio Button)
+            let methodVal = selectedMethodCol ? row[selectedMethodCol] : "";
+
+            // 3. Amount (Debit - Credit)
+            let dbt = parseFloat(row[colDebit]) || 0;
+            let crd = parseFloat(row[colCredit]) || 0;
+            let amountVal = (dbt - crd).toFixed(2);
+
+            // 4. Nature (Ledger)
+            let natureVal = row[colLedger];
+
+            // 5. Reason (Split Logic)
+            let reasonVal = "";
+            // Check if any column needs splitting to become 'Reason'
+            // Hum pehla wala split rule uthayenge jo match karega
+            for (let [hName, delim] of Object.entries(splitRules)) {
+                let cellData = row[hName] ? row[hName].toString() : "";
+                if (cellData.includes(delim)) {
+                    reasonVal = cellData.split(delim)[1].trim(); // Get part after delimiter
+                    break; 
+                }
+            }
+
+            // 6. Fill Logic (Blank Column Filling)
+            // Agar user ne "Fill/Rename" me kuch likha hai aur column blank tha, to wo value use karein
+            // Note: Expenses sheet me hum sirf 5 cols bhej rahe hain, par agar DB save karna hai to ye useful hai.
+
+            return {
+                "Date": dateVal,
+                "Method": methodVal,
+                "Amount": amountVal,
+                "Nature": natureVal,
+                "Reason": reasonVal
+            };
+        });
+
+        // D. Create New Excel File
+        let newWs = XLSX.utils.json_to_sheet(expensesData);
+        let newWb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(newWb, newWs, "Expenses");
+
+        // E. Download File
+        XLSX.writeFile(newWb, `${workbookName}_ExpensesReport.xlsx`);
+
+        msgDiv.innerText = "✅ Report Downloaded! Sending copy to Database...";
+
+        // F. (Optional) Send to Google Sheet Database
+        sendToDatabase(expensesData);
     }
 
-    
+    // 4. SYNC WITH DATABASE (Google App Script)
+    function sendToDatabase(finalData) {
+        // YAHA APNA APP SCRIPT URL DALEIN
+        const SCRIPT_URL = "YOUR_APP_SCRIPT_URL_HERE"; 
+
+        if (SCRIPT_URL === "YOUR_APP_SCRIPT_URL_HERE") {
+             console.log("App Script URL not set, skipping DB save.");
+             return;
+        }
+
+        fetch(SCRIPT_URL, {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "importData", data: finalData })
+        }).then(() => {
+            console.log("Data saved to Google Sheet Database.");
+        }).catch(err => console.error(err));
+    }
 </script>
 
 </body>
