@@ -96,9 +96,30 @@
     }
 
     function generateReport() {
-        // Future logic to trigger expense generation
-        alert("Feature coming soon: Trigger App Script to make Expense Report");
+        const statusDiv = document.getElementById('status');
+        statusDiv.innerText = "Generating Expense Report...";
+        statusDiv.style.color = "blue";
+
+        // Call App Script with action: "generateExpense"
+        fetch(SCRIPT_URL, {
+            method: "POST",
+            mode: "no-cors", // Note: no-cors means we won't see the specific success text, but code will run
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "generateExpense" })
+        })
+        .then(() => {
+            // Since no-cors hides the response, we assume success if request didn't fail network-wise
+            statusDiv.innerText = "✅ Expense Report Request Sent! Check your Google Sheet.";
+            statusDiv.style.color = "green";
+        })
+        .catch(error => {
+            console.error("Error:", error);
+            statusDiv.innerText = "❌ Error generating report.";
+            statusDiv.style.color = "red";
+        });
     }
+
+    
 </script>
 
 </body>
