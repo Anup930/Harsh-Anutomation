@@ -3,244 +3,319 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Expense Manager Dashboard</title>
+    <title>Expense Automation Hub</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; color: #333; }
-        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        
-        h2 { border-bottom: 3px solid #2f75b5; padding-bottom: 10px; color: #2f75b5; }
-        
-        /* Upload Section */
-        .upload-area { border: 2px dashed #ccc; padding: 20px; text-align: center; border-radius: 8px; margin-bottom: 20px; background: #fafafa; }
-        input[type="file"] { padding: 10px; }
+        /* RESET & LAYOUT */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { display: flex; height: 100vh; background-color: #f4f6f9; }
 
-        /* Control Table Styling */
-        .control-panel { display: none; margin-top: 20px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-        th { background: #2f75b5; color: white; }
-        
-        /* Status Colors */
-        .status-data { background-color: #c6efce; color: #006100; font-weight: bold; text-align: center; border-radius: 4px; padding: 2px; }
-        .status-blank { background-color: #ffc7ce; color: #9c0006; font-weight: bold; text-align: center; border-radius: 4px; padding: 2px; }
+        /* --- SIDEBAR STYLING --- */
+        .sidebar {
+            width: 260px;
+            background-color: #2c3e50; /* Dark Blue */
+            color: white;
+            display: flex;
+            flex-direction: column;
+            padding-top: 20px;
+            position: fixed;
+            height: 100%;
+            left: 0; top: 0;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+        }
 
-        /* Inputs */
-        input.input-box { width: 90%; padding: 5px; border: 1px solid #ccc; border-radius: 4px; }
+        .logo {
+            text-align: center;
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 30px;
+            border-bottom: 1px solid #34495e;
+            padding-bottom: 15px;
+        }
+        .logo i { color: #2ecc71; margin-right: 10px; }
+
+        .menu { list-style: none; width: 100%; }
+        .menu li { width: 100%; }
         
-        /* Buttons */
-        .btn-group { margin-top: 20px; text-align: right; }
-        .btn { padding: 12px 24px; border: none; cursor: pointer; border-radius: 5px; font-size: 16px; margin-left: 10px; font-weight: bold; }
-        .btn-primary { background: #28a745; color: white; } /* Green */
-        .btn-primary:hover { background: #218838; }
+        .menu a {
+            display: flex;
+            align-items: center;
+            padding: 15px 25px;
+            color: #bdc3c7;
+            text-decoration: none;
+            font-size: 16px;
+            transition: 0.3s;
+        }
+
+        .menu a:hover, .menu a.active {
+            background-color: #34495e;
+            color: #ffffff;
+            border-left: 5px solid #2ecc71; /* Green Accent */
+        }
+
+        .menu a i { margin-right: 15px; width: 20px; text-align: center; }
+
+        /* --- MAIN CONTENT AREA --- */
+        .main-content {
+            margin-left: 260px; /* Sidebar width */
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+            width: calc(100% - 260px);
+        }
+
+        .header-title {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 10px;
+        }
+
+        /* --- CARDS & BOXES --- */
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+
+        .upload-area {
+            border: 2px dashed #3498db;
+            padding: 30px;
+            text-align: center;
+            background: #f0f8ff;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .upload-area:hover { background: #e6f2ff; }
         
-        .loading { color: blue; font-weight: bold; margin-top: 10px; }
+        /* TABLE STYLES */
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
+        th { background: #2c3e50; color: white; padding: 12px; text-align: left; }
+        td { border-bottom: 1px solid #eee; padding: 10px; }
+        
+        .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .bg-green { background: #d4edda; color: #155724; }
+        .bg-red { background: #f8d7da; color: #721c24; }
+
+        /* INPUTS & BUTTONS */
+        .input-box { width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; }
+        .btn { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 15px; font-weight: bold; color: white; }
+        .btn-primary { background: #27ae60; }
+        .btn-primary:hover { background: #219150; }
+        
+        /* Sections Visibility */
+        .section { display: none; }
+        .section.active { display: block; }
+
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>📊 Expense Automation Hub</h2>
-    
-    <div class="upload-area">
-        <p>📂 Select your Excel File to start:</p>
-        <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" onchange="loadAndPreview()" />
-    </div>
-
-    <div id="controlPanel" class="control-panel">
-        <h3>🎛️ Control Center</h3>
-        <p>Map your columns below without opening Excel.</p>
-        
-        <table id="mappingTable">
-            <thead>
-                <tr>
-                    <th width="20%">Column Name</th>
-                    <th width="10%">Status</th>
-                    <th width="10%">Is Method?</th>
-                    <th width="20%">Split By (e.g. ":")</th>
-                    <th width="20%">Fill/Rename</th>
-                </tr>
-            </thead>
-            <tbody id="tableBody">
-                </tbody>
-        </table>
-
-        <div class="btn-group">
-            <button class="btn btn-primary" onclick="processAndDownload()">⬇️ Generate & Download Report</button>
+    <nav class="sidebar">
+        <div class="logo">
+            <i class="fas fa-chart-pie"></i> Data Stack
         </div>
-        <div id="msg" class="loading"></div>
-    </div>
-</div>
+        <ul class="menu">
+            <li><a href="#" class="active" onclick="showSection('dashboard', this)">
+                <i class="fas fa-home"></i> Dashboard
+            </a></li>
+            <li><a href="#" onclick="showSection('mapping', this)">
+                <i class="fas fa-sliders-h"></i> Tools & Split
+            </a></li>
+            <li><a href="#" onclick="showSection('database', this)">
+                <i class="fas fa-database"></i> Database View
+            </a></li>
+            <li><a href="#" onclick="showSection('settings', this)">
+                <i class="fas fa-cog"></i> Settings
+            </a></li>
+        </ul>
+    </nav>
 
-<script>
-    // GLOBAL VARIABLES to store data
-    let rawData = [];
-    let headers = [];
-    let workbookName = "";
-
-    // 1. FILE LOAD & PREVIEW
-    function loadAndPreview() {
-        const fileInput = document.getElementById('fileInput');
-        const file = fileInput.files[0];
-        if (!file) return;
-
-        workbookName = file.name.split('.')[0]; // Store filename
-        const reader = new FileReader();
-
-        reader.onload = function(e) {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, {type: 'array'});
+    <main class="main-content">
+        
+        <div id="dashboard" class="section active">
+            <h2 class="header-title">📂 Dashboard - File Processor</h2>
             
-            // Read First Sheet
-            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-            rawData = XLSX.utils.sheet_to_json(firstSheet, {defval: ""}); // Empty cells as ""
+            <div class="card">
+                <h3>Step 1: Upload Excel File</h3>
+                <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                    <i class="fas fa-cloud-upload-alt" style="font-size: 40px; color: #3498db; margin-bottom: 10px;"></i>
+                    <p>Click here to select file (.xlsx, .xls)</p>
+                    <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" hidden onchange="loadAndPreview()" />
+                    <p id="fileName" style="margin-top: 10px; font-weight: bold; color: #2c3e50;"></p>
+                </div>
+            </div>
+
+            <div id="controlPanel" class="card" style="display: none;">
+                <h3>Step 2: Map & Control Columns</h3>
+                <table id="mappingTable">
+                    <thead>
+                        <tr>
+                            <th>Column Name</th>
+                            <th>Status</th>
+                            <th style="text-align:center">Set as Method</th>
+                            <th>Split By (Delimiter)</th>
+                            <th>Rename / Fill</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+                <div style="text-align: right; margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="processAndDownload()">
+                        <i class="fas fa-file-download"></i> Generate Report
+                    </button>
+                    <p id="msg" style="margin-top:10px; color:blue;"></p>
+                </div>
+            </div>
+        </div>
+
+        <div id="mapping" class="section">
+            <h2 class="header-title">🛠️ Tools</h2>
+            <div class="card">
+                <p>Advanced splitting tools coming here...</p>
+            </div>
+        </div>
+
+        <div id="database" class="section">
+            <h2 class="header-title">🗄️ Database</h2>
+            <div class="card">
+                <p>Your Google Sheet Backend is connected.</p>
+                <a href="https://docs.google.com/spreadsheets" target="_blank" style="color:#3498db; text-decoration:none;">
+                    <i class="fas fa-external-link-alt"></i> Open Google Sheet
+                </a>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // GLOBAL VARIABLES
+        let rawData = [];
+        let headers = [];
+        let workbookName = "";
+
+        // --- SIDEBAR NAVIGATION ---
+        function showSection(sectionId, element) {
+            // Hide all sections
+            document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
+            // Show selected section
+            document.getElementById(sectionId).classList.add('active');
             
-            if (rawData.length === 0) { alert("File is empty!"); return; }
-
-            // Extract Headers
-            headers = Object.keys(rawData[0]);
-            
-            // Show Dashboard
-            renderControlTable();
-            document.getElementById('controlPanel').style.display = 'block';
-        };
-        reader.readAsArrayBuffer(file);
-    }
-
-    // 2. RENDER CONTROL TABLE (HTML Generation)
-    function renderControlTable() {
-        const tbody = document.getElementById('tableBody');
-        tbody.innerHTML = ""; // Clear old
-
-        headers.forEach((header, index) => {
-            // Check if column has data
-            let hasData = rawData.some(row => row[header] && row[header].toString().trim() !== "");
-            let statusClass = hasData ? "status-data" : "status-blank";
-            let statusText = hasData ? "Has Data" : "Blank";
-
-            // Create Row
-            let tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td><strong>${header}</strong></td>
-                <td><div class="${statusClass}">${statusText}</div></td>
-                <td style="text-align:center;">
-                    <input type="radio" name="methodGroup" value="${header}" ${header.toLowerCase().includes('vch') ? 'checked' : ''}>
-                </td>
-                <td>
-                    <input type="text" class="input-box split-input" id="split-${index}" placeholder="Delimiter (e.g. :)">
-                </td>
-                <td>
-                    <input type="text" class="input-box fill-input" id="fill-${index}" placeholder="New Name / Fill Value">
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-    }
-
-    // 3. MAIN LOGIC: PROCESS DATA & DOWNLOAD
-    function processAndDownload() {
-        const msgDiv = document.getElementById('msg');
-        msgDiv.innerText = "Processing data...";
-
-        // A. Get User Rules from UI
-        let selectedMethodCol = document.querySelector('input[name="methodGroup"]:checked')?.value || "";
-        let splitRules = {}; // Store split delimiters
-        let fillRules = {};  // Store rename/fill values
-
-        headers.forEach((header, index) => {
-            let sVal = document.getElementById(`split-${index}`).value;
-            let fVal = document.getElementById(`fill-${index}`).value;
-            if(sVal) splitRules[header] = sVal;
-            if(fVal) fillRules[header] = fVal;
-        });
-
-        // B. Identify Core Columns
-        // Note: Using flexible matching (case-insensitive)
-        let colDate = headers.find(h => h.toLowerCase().includes("date"));
-        let colDebit = headers.find(h => h.toLowerCase().includes("debit"));
-        let colCredit = headers.find(h => h.toLowerCase().includes("credit"));
-        let colLedger = headers.find(h => h.toLowerCase().includes("ledger") || h.toLowerCase().includes("particulars"));
-
-        if (!colDate || !colDebit || !colCredit || !colLedger) {
-            alert("Error: Date, Debit, Credit, or Ledger columns not found automatically. Please rename columns in your Excel.");
-            return;
+            // Update Menu Active State
+            document.querySelectorAll('.menu a').forEach(link => link.classList.remove('active'));
+            element.classList.add('active');
         }
 
-        // C. Process Each Row
-        let expensesData = rawData.map(row => {
-            // 1. Date
-            let dateVal = row[colDate];
+        // --- FILE HANDLING ---
+        function loadAndPreview() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            if (!file) return;
 
-            // 2. Method (From Radio Button)
-            let methodVal = selectedMethodCol ? row[selectedMethodCol] : "";
+            document.getElementById('fileName').innerText = "Selected: " + file.name;
+            workbookName = file.name.split('.')[0];
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                rawData = XLSX.utils.sheet_to_json(firstSheet, {defval: ""});
+                
+                if (rawData.length === 0) { alert("File is empty!"); return; }
+                headers = Object.keys(rawData[0]);
+                
+                renderControlTable();
+                document.getElementById('controlPanel').style.display = 'block';
+            };
+            reader.readAsArrayBuffer(file);
+        }
 
-            // 3. Amount (Debit - Credit)
-            let dbt = parseFloat(row[colDebit]) || 0;
-            let crd = parseFloat(row[colCredit]) || 0;
-            let amountVal = (dbt - crd).toFixed(2);
+        function renderControlTable() {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = "";
 
-            // 4. Nature (Ledger)
-            let natureVal = row[colLedger];
+            headers.forEach((header, index) => {
+                let hasData = rawData.some(row => row[header] && row[header].toString().trim() !== "");
+                let statusBadge = hasData 
+                    ? `<span class="status-badge bg-green">Has Data</span>` 
+                    : `<span class="status-badge bg-red">Blank</span>`;
 
-            // 5. Reason (Split Logic)
-            let reasonVal = "";
-            // Check if any column needs splitting to become 'Reason'
-            // Hum pehla wala split rule uthayenge jo match karega
-            for (let [hName, delim] of Object.entries(splitRules)) {
-                let cellData = row[hName] ? row[hName].toString() : "";
-                if (cellData.includes(delim)) {
-                    reasonVal = cellData.split(delim)[1].trim(); // Get part after delimiter
-                    break; 
-                }
+                let tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${header}</strong></td>
+                    <td>${statusBadge}</td>
+                    <td style="text-align:center;">
+                        <input type="radio" name="methodGroup" value="${header}" ${header.toLowerCase().includes('vch') ? 'checked' : ''}>
+                    </td>
+                    <td><input type="text" class="input-box" id="split-${index}" placeholder=": or -"></td>
+                    <td><input type="text" class="input-box" id="fill-${index}" placeholder="New Value"></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function processAndDownload() {
+            const msgDiv = document.getElementById('msg');
+            msgDiv.innerText = "Processing...";
+
+            // 1. Get Rules
+            let selectedMethodCol = document.querySelector('input[name="methodGroup"]:checked')?.value || "";
+            let splitRules = {};
+            
+            headers.forEach((header, index) => {
+                let sVal = document.getElementById(`split-${index}`).value;
+                if(sVal) splitRules[header] = sVal;
+            });
+
+            // 2. Identify Columns
+            let colDate = headers.find(h => h.toLowerCase().includes("date"));
+            let colDebit = headers.find(h => h.toLowerCase().includes("debit"));
+            let colCredit = headers.find(h => h.toLowerCase().includes("credit"));
+            let colLedger = headers.find(h => h.toLowerCase().includes("ledger") || h.toLowerCase().includes("particulars"));
+
+            if (!colDate || !colDebit || !colCredit || !colLedger) {
+                alert("Error: Missing Date, Debit, Credit, or Ledger columns.");
+                msgDiv.innerText = "";
+                return;
             }
 
-            // 6. Fill Logic (Blank Column Filling)
-            // Agar user ne "Fill/Rename" me kuch likha hai aur column blank tha, to wo value use karein
-            // Note: Expenses sheet me hum sirf 5 cols bhej rahe hain, par agar DB save karna hai to ye useful hai.
+            // 3. Transform Data
+            let expensesData = rawData.map(row => {
+                let dbt = parseFloat(row[colDebit]) || 0;
+                let crd = parseFloat(row[colCredit]) || 0;
+                
+                let reasonVal = "";
+                for (let [hName, delim] of Object.entries(splitRules)) {
+                    let cellData = row[hName] ? row[hName].toString() : "";
+                    if (cellData.includes(delim)) {
+                        reasonVal = cellData.split(delim)[1].trim();
+                        break; 
+                    }
+                }
 
-            return {
-                "Date": dateVal,
-                "Method": methodVal,
-                "Amount": amountVal,
-                "Nature": natureVal,
-                "Reason": reasonVal
-            };
-        });
+                return {
+                    "Date": row[colDate],
+                    "Method": selectedMethodCol ? row[selectedMethodCol] : "",
+                    "Amount": (dbt - crd).toFixed(2),
+                    "Nature": row[colLedger],
+                    "Reason": reasonVal
+                };
+            });
 
-        // D. Create New Excel File
-        let newWs = XLSX.utils.json_to_sheet(expensesData);
-        let newWb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(newWb, newWs, "Expenses");
+            // 4. Download Excel
+            let newWs = XLSX.utils.json_to_sheet(expensesData);
+            let newWb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(newWb, newWs, "Expenses");
+            XLSX.writeFile(newWb, `${workbookName}_Report.xlsx`);
 
-        // E. Download File
-        XLSX.writeFile(newWb, `${workbookName}_ExpensesReport.xlsx`);
-
-        msgDiv.innerText = "✅ Report Downloaded! Sending copy to Database...";
-
-        // F. (Optional) Send to Google Sheet Database
-        sendToDatabase(expensesData);
-    }
-
-    // 4. SYNC WITH DATABASE (Google App Script)
-    function sendToDatabase(finalData) {
-        // YAHA APNA APP SCRIPT URL DALEIN
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwp4UULW42vByVty5YnhfgsZLRDQ-aRR4qsbnXct5zc0mGhWgkOi5H1rmV2_AeUAlXU/exec"; 
-
-        if (SCRIPT_URL === "YOUR_APP_SCRIPT_URL_HERE") {
-             console.log("App Script URL not set, skipping DB save.");
-             return;
+            msgDiv.innerText = "✅ Report Downloaded Successfully!";
         }
-
-        fetch(SCRIPT_URL, {
-            method: "POST",
-            mode: "no-cors",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: "importData", data: finalData })
-        }).then(() => {
-            console.log("Data saved to Google Sheet Database.");
-        }).catch(err => console.error(err));
-    }
-</script>
-
+    </script>
 </body>
 </html>
